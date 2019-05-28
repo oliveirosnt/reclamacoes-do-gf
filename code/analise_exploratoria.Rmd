@@ -14,11 +14,12 @@ library(tidyverse)
 library(tidytext)
 library(here)
 library(lexiconPT)
+library(plotly)
 theme_set(theme_bw())
 ```
 
 ```{r warning=FALSE, include=FALSE, echo=FALSE}
-setwd("/home/souza/workspace/reclamacoes-do-gf/")
+setwd("C:\\Users\\Oliveiros Neto\\Documents\\reclamacoes-do-gf")
 avaliacoes <- read_csv("data/3-avaliacao-humana/avaliacoes20190515.csv")
 reclamacoes <-  read_csv("data/1-reclamacoes-selecionadas/20190515-reclamacoes-selecionadas.csv")
 ```
@@ -127,3 +128,48 @@ avaliacoes %>% group_by(id) %>%
  
 ```
   
+
+### Inserindo coluna com as médias dos níveis de insatisfação avaliadas para cada reclamação.
+
+Usamos a média por dois motivos:
+
+- Poucas avaliações por reclamação;
+- Números obtidos nas avaliações muito próximos;
+
+```{r}
+media <- avaliacoes %>%
+  group_by(id) %>%
+  summarise(media = median(insatisfacao))
+
+reclamacoes <- reclamacoes %>% mutate(media_insatisfacao = media$media)
+
+```
+
+### Existe relação entre o tamanho do texto da reclamação e a insatisfação do usuário?
+
+- Será que usuários mais insatisfeitos tendem a escrever mais sobre suas insatisfações?
+
+```{r}
+reclamacoes %>% ggplot(aes(x=media_insatisfacao, y=texto.length)) + geom_point()
+  
+```
+
+### Existe relação entre o tamanho do titulo da reclamação e a insatisfação do usuário?
+
+- Será que usuários mais insatisfeitos tendem a escrever títulos maiores sobre suas insatisfações?
+
+```{r}
+reclamacoes %>% ggplot(aes(x=media_insatisfacao, y=titulo.length)) + geom_point()
+
+```
+
+  
+### Existe relação entre a quantidade de caracteres em CAPSLOCK da reclamação e a insatisfação do usuário?
+
+- Será que usuários tendem a expressar sua insatisfações utilizando as letras em CAPSLOCK?
+
+```{r}
+reclamacoes %>% ggplot(aes(x=media_insatisfacao, y=numero.de.capslock)) + geom_point()
+
+```
+
