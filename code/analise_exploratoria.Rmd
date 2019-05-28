@@ -1,0 +1,129 @@
+---
+title: "EDA - Reclamações ANS e ANATEL"
+author: "Ronan Souza, Maria Clara Moraes, Oliveiros Neto, Lucas Arcoverde"
+date: "5/27/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r warning=FALSE, echo=FALSE, include=FALSE}
+library(tidyverse)
+library(tidytext)
+library(here)
+library(lexiconPT)
+theme_set(theme_bw())
+```
+
+```{r warning=FALSE, include=FALSE, echo=FALSE}
+setwd("/home/souza/workspace/reclamacoes-do-gf/")
+avaliacoes <- read_csv("data/3-avaliacao-humana/avaliacoes20190515.csv")
+reclamacoes <-  read_csv("data/1-reclamacoes-selecionadas/20190515-reclamacoes-selecionadas.csv")
+```
+
+## Reclamações
+
+Inserindo colunas de comprimento da reclamacao e do titulo. Além de uma coluna com o número de caracteres em CAPSLOCK
+
+```{r}
+reclamacoes <- reclamacoes %>% mutate(texto.length = str_length(texto),
+                                      titulo.length = str_length(titulo))
+reclamacoes$numero.de.capslock <- str_count(reclamacoes$texto, "\\b[A-Z]{2,}\\b")
+```
+
+### Graficos
+
+Número de reclamações distribuidas pelo tamanho do título
+```{r echo=FALSE}
+reclamacoes %>% 
+  filter(complete.cases(.)) %>% 
+  ggplot(aes(fill = orgao, x = titulo.length), na.rm = TRUE) + 
+  geom_histogram(binwidth = 2, na.rm = TRUE) + 
+  facet_grid(orgao ~ .)
+
+```
+
+Número de reclamações distribuidas pelo tamanho da reclamação
+```{r echo=FALSE}
+reclamacoes %>% 
+  filter(complete.cases(.)) %>% 
+  ggplot(aes(fill = orgao, x = texto.length), na.rm = TRUE) + 
+  geom_histogram(binwidth = 50, na.rm = TRUE) + 
+  facet_grid(orgao ~ .)
+```
+
+
+
+## Avaliações
+
+```{r warning=FALSE}
+avaliacoes <- avaliacoes %>% 
+              select(avaliador = `Matricula`, 
+                      id = `ID da reclamação`, 
+                       insatisfacao = `Grau de insatisfação`)
+```
+
+Checando se há avaliações fora do escopo (0, 5)
+
+```{r }
+avaliacoes %>% 
+  filter((id %in% 1:5 ))
+```
+
+### Gráficos
+
+Número de avaliações feitas por reclamação
+```{r echo=FALSE}
+avaliacoes %>% 
+  group_by(id) %>% 
+  count() %>% 
+  ggplot(aes("reclamacoes", n)) + 
+  geom_jitter(width = .05, alpha = .7)
+```
+
+Média de avaliações por reclamação
+```{r }
+avaliacoes %>% 
+  group_by(id) %>% 
+  count() %>%
+  ungroup() %>% 
+  summarise(media = mean(n), 
+            mediana = median(n))
+```
+
+Número de revisores por reclamação
+```{r echo=FALSE}
+avaliacoes %>% group_by(id) %>% 
+  summarize(count=n()) %>% 
+  ggplot(aes(x=reorder(id, count), y=count)) + geom_bar(stat = "identity")
+```
+
+Nível de discordância X ID da reclamação
+```{r echo=FALSE}
+avaliacoes %>% group_by(id) %>% 
+      summarise(range = max(insatisfacao) - min(insatisfacao),
+                mediana = median(insatisfacao)) %>% 
+      ggplot(aes(x=id, y=range, colour = id)) + geom_point() +
+      geom_jitter(height = 0.05, alpha = .4)
+```
+
+
+Como podemos ver a baixo, a maioria das avaliações tem nível de discordância 1 ou 2
+```{r }
+avaliacoes %>% group_by(id) %>% 
+  summarise(range = max(insatisfacao) - min(insatisfacao),
+            mediana = median(insatisfacao)) %>% 
+  group_by(range) %>% count()
+ 
+```
+
+Número de reclamações com discordância maior que 2
+```{r}
+avaliacoes %>% group_by(id) %>% 
+  summarise(range = max(insatisfacao) - min(insatisfacao)) %>% 
+  filter(range > 2) %>% count() 
+ 
+```
+  
