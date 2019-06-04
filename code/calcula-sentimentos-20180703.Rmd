@@ -8,11 +8,12 @@ library(tidyverse)
 library(tidytext)
 library(here)
 library(lexiconPT)
+library(plotly)
 theme_set(theme_bw())
 ```
 
 ```{r carrega}
-reclamacoes = read_csv(here("data/3-avaliacao-humana/reclamacoes-avaliadas-20181113.csv"))
+reclamacoes = read_csv(here("data/3-avaliacao-humana/reclamacoes-avaliadas-20190515.csv"))
 
 #reclamacoes = reclamacoes_raw %>% 
 #    mutate(
@@ -40,8 +41,8 @@ Precisamos de um dataframe onde cada observacao eh uma palavra.
 
 ```{r separa}
 palavra_a_palavra = reclamacoes %>% 
-    select(id, reclamacao) %>% 
-    unnest_tokens(termo, reclamacao)
+    select(id, texto) %>% 
+    unnest_tokens(termo, texto)
 
 palavra_a_palavra %>%
   select(id, termo) %>%
@@ -57,13 +58,34 @@ Agora, de fato, calculamos qual a polaridade acumulada (via somatorio) de cada r
 ```{r calcula_sentimentos}
 sentimentos = palavras_com_sentimento %>% 
     group_by(id) %>%
-    summarise(sentimento_op30 = sum(op30, na.rm = TRUE),
+    summarise(sentimento_op30 = sum(op30, na.rm = TRUE) *-1,
               palavras_op30 = sum(!is.na(op30)),
-              sentimento_sent = sum(sent, na.rm = TRUE), 
+              sentimento_sent = sum(sent, na.rm = TRUE) *-1, 
               palavras_sent = sum(!is.na(sent)), 
               palavras = n())
 
 sentimentos %>% 
     write_csv(here("data/5-sentimentos/sentimento.csv"))
+
+x <- sentimentos[2]
+normalized_op = ((x-min(x))/(max(x)-min(x)) * 4) + 1
+
+y <- sentimentos[4]
+normalized_sent = ((y-min(y))/(max(y)-min(y)) * 4) + 1 
+
+reclamacoes <- reclamacoes %>% mutate(sentimentos_op = normalized_op$sentimento_op30)
+reclamacoes <- reclamacoes %>% mutate(sentimentos_sent = normalized_sent$sentimento_sent)
+
+#linearModOp <- lm(insatisfacao ~ sentimentos_op, data=reclamacoes) 
+#linearModSent <- lm(insatisfacao ~ sentimentos_sent, data=reclamacoes)
+
+#cor_op <- cor(reclamacoes$sentimentos_op, reclamacoes$insatisfacao)
+#cor_sent <- cor(reclamacoes$sentimentos_sent, reclamacoes$insatisfacao)
+
+p <- plot_ly(reclamacoes, x = ~insatisfacao, y = ~sentimentos_op, type = 'scatter')
+p
+
+q <- plot_ly(reclamacoes, x = ~insatisfacao, y = ~sentimentos_sent, type = 'scatter')
+q
 ```
 
